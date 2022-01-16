@@ -18,78 +18,51 @@ import os
 import sys
 from sklearn.model_selection import train_test_split
 
-# class dataprep:
-#   def __init__(self,datapath):
-#     self.datapath = datapath
-#   def framer(self):
-#     d_frame =pd.read_csv(self.datapath)
-#     ones_vector =np.ones(len(d_frame),dtype='int32')
-#     d_frame['imp_score'] = ones_vector
-#     return d_frame
+class dataprep:
+  def __init__(self,datapath):
+    self.datapath = datapath
+  def framer(self):
+    d_frame =pd.read_csv(self.datapath)
+    ones_vector =np.ones(len(d_frame),dtype='int32')
+    d_frame['imp_score'] = ones_vector
+    d_frame = d_frame.sort_values(by=['user_id']).reset_index(drop = True)
+	  
+    users = d_frame['user_id'].unique().tolist()
+    user_id_org = {j:i+1 for i,j in enumerate(users)}
+    org_user_id = {i:j for i,j in enumerate(users)}
 
-# dataprep('drive/MyDrive/Colab Notebooks/ua_df.csv').framer()
+    animes = d_frame['anime_id'].unique().tolist()
+    anime_id_org = {j:i+1 for i,j in enumerate(animes)}
+    org_anime_id = {i:j for i,j in enumerate(animes)}
 
-
-
-df= pd.read_csv('drive/MyDrive/Colab Notebooks/ua_df.csv')
-df.info()
-df.head(3)
-
-ones_vector =np.ones(len(df),dtype='int32')
-df['imp_score'] = ones_vector
-df.head(3)
-
-df = df.sort_values(by=['user_id']).reset_index(drop = True)
-df.head(3)
-
-
-
-
-
-
-
-### both user_id and anime_id values are not sequentially ranged from 0 to max value, in other word there are some missing values in between.
-###  To overcome this issue, I will create dictionary and map values
-
-### i+1 , +1 plus added becauser in some cases 0 padding can be necessary, Thus +1 added not to confuse with 0 padding
-users = df['user_id'].unique().tolist()
-user_id_org = {j:i+1 for i,j in enumerate(users)}
-org_user_id = {i:j for i,j in enumerate(users)}
-
-animes = df['anime_id'].unique().tolist()
-anime_id_org = {j:i+1 for i,j in enumerate(animes)}
-org_anime_id = {i:j for i,j in enumerate(animes)}
-
-user_id_mapped = df['user_id'].map(user_id_org)
-anime_id_mapped = df['anime_id'].map(anime_id_org)
-
-df_mapped =pd.DataFrame({
+    user_id_mapped = d_frame['user_id'].map(user_id_org)
+    anime_id_mapped = d_frame['anime_id'].map(anime_id_org)
+#     
+    df_mapped =pd.DataFrame({
     'user_id' : user_id_mapped,
     'anime_id' : anime_id_mapped,
-    'imp_score' : df['imp_score']
-})
+    'imp_score' : d_frame['imp_score']
+          })
+		
+    df_mapped_pivot = df_mapped.pivot(index = 'user_id', columns='anime_id',
+      values = 'imp_score')
+    df_mapped_pivot = df_mapped_pivot.fillna(0)
+	
+	
+    user_len , item_len =df_mapped_pivot.shape
+	
+    user_len , item_len =df_mapped_pivot.shape
+    mapped_array  =np.array(df_mapped_pivot, dtype= 'int32') 
+    if user_len > item_len :
+      final_array = mapped_array[0:item_len , 0:item_len]
+    elif item_len > user_len :
+      final_array = mapped_array[0:user_len , 0:user_len]
 
-# df_mapped
-
-
-
-df_mapped_pivot = df_mapped.pivot(index = 'user_id', columns='anime_id', values = 'imp_score')
-df_mapped_pivot = df_mapped_pivot.fillna(0)
-df_mapped_pivot.head(3)
-
-user_len , item_len =df_mapped_pivot.shape
-print(user_len)
-print(item_len)
-
-user_len , item_len =df_mapped_pivot.shape
-mapped_array  =np.array(df_mapped_pivot, dtype= 'int32') 
-if user_len > item_len :
-  final_array = mapped_array[0:item_len , 0:item_len]
-elif item_len > user_len :
-  final_array = mapped_array[0:user_len , 0:user_len]
-
-user_input = final_array
-item_input = np.transpose(final_array)
+    user_input = final_array
+    item_input = np.transpose(final_array)
+	
+	
+    return user_input, item_input
 
 
 
