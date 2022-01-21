@@ -16,6 +16,13 @@ drive.mount('/content/drive')
 
 dir_url = 'drive/MyDrive/Colab Notebooks/datasets/anime/animelists_cleaned.csv'
 
+import numpy as np 
+import pandas as pd 
+import os 
+import sys 
+from google.colab import drive 
+drive.mount('/content/drive')
+dir_url = 'drive/MyDrive/Colab Notebooks/datasets/anime/animelists_cleaned.csv'
 class data_prep:
   def __init__(self,dir):
     self.dir = dir
@@ -39,6 +46,9 @@ class data_prep:
     df['my_last_updated'] =date_part_1
     #### Above column will convert the string data into a date data
     df['my_last_updated'] = pd.to_datetime(df['my_last_updated'])
+    
+
+
     #### unique users and corresponding anime data will be grouped and will be sorted as 
     #### function of time as ascendin order 
     x = df.set_index(['username','my_last_updated']).sort_index()
@@ -49,12 +59,26 @@ class data_prep:
     df = x.groupby('username').aggregate(lambda tdf: tdf.unique().tolist())
     df = df.reset_index()
     
-    # df['perevious_watches'] = df['anime_id'][:][:-1]
-    # df['last_watches'] = df['anime_id'][:][-1]
-    # df = df.drop(columns = ['anime_id'])
-    return df
+    ### users who watched less than min_len animes , has been dropped
+    min_len = 5
+    shorts = []
+    for i,j in enumerate(df['anime_id']):
+      if len(j) < min_len:
+        shorts.append(i)
 
-data_prep(dir_url).prep()
+    df = df.drop(shorts).reset_index(drop=True)
+    last_watches = []
+    perevious_watches = []
+    for i in df['anime_id']:
+      last_watches.append(i[-1])
+      perevious_watches.append(i[:-1])
+    df['perevious_watches'] = perevious_watches
+    df['last_watches'] = last_watches
+    df = df.drop(columns = ['anime_id'])
+    return df
+df = data_prep(dir_url).prep()
+df.head(2)
+
 
 
 
