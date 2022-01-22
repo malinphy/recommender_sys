@@ -28,6 +28,13 @@ class data_prep:
     self.dir = dir
   
   def prep(self):
+    ## animelists_cleaned.csv dataset contains ['username', 'anime_id', 'my_watched_episodes', 'my_start_date',
+    ##                                          'my_finish_date', 'my_score', 'my_status', 'my_rewatching',
+    ##                                          'my_rewatching_ep', 'my_last_updated', 'my_tags']
+    
+    ## the number of unique values for 'my_start_date' and 'my_finish rate' is 3 orders of magnitude smaller than 
+    ## the length of of the complete dataset. Most of the dates are filled with '0000-00-00' values. 
+    ## therefore, those columns will not be added into analysis
     animelist_cleaned_cols = ['username','anime_id','my_last_updated'] ##since data set is large, 
                                                                        ##I will not add some non-related columns
     df = pd.read_csv(self.dir,
