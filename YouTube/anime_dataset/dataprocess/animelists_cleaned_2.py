@@ -13,15 +13,6 @@ import os
 import sys 
 from google.colab import drive 
 drive.mount('/content/drive')
-
-dir_url = 'drive/MyDrive/Colab Notebooks/datasets/anime/animelists_cleaned.csv'
-
-import numpy as np 
-import pandas as pd 
-import os 
-import sys 
-from google.colab import drive 
-drive.mount('/content/drive')
 dir_url = 'drive/MyDrive/Colab Notebooks/datasets/anime/animelists_cleaned.csv'
 class data_prep:
   def __init__(self,dir):
