@@ -38,6 +38,9 @@ class data_prep:
     
     ## 'my_rewatching' feature is also dominated with NaN values
     ## 'my_tags' is completely filled with NaN values
+    ## 'my_rewatching_ep'  is mostly filled with 0 values 
+    ## most probably 'my_Rewatching','my_tags','my_rewatching' features were filled by users, therefore, those columns
+    ## will not be used during the feature engineering and analysis
     animelist_cleaned_cols = ['username','anime_id','my_last_updated'] ##since data set is large, 
                                                                        ##I will not add some non-related columns
     df = pd.read_csv(self.dir,
