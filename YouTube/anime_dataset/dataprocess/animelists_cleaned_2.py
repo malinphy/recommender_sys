@@ -35,6 +35,9 @@ class data_prep:
     ## the number of unique values for 'my_start_date' and 'my_finish rate' is 3 orders of magnitude smaller than 
     ## the length of of the complete dataset. Most of the dates are filled with '0000-00-00' values. 
     ## therefore, those columns will not be added into analysis
+    
+    ## 'my_rewatching' feature is also dominated with NaN values
+    ## 'my_tags' is completely filled with NaN values
     animelist_cleaned_cols = ['username','anime_id','my_last_updated'] ##since data set is large, 
                                                                        ##I will not add some non-related columns
     df = pd.read_csv(self.dir,
