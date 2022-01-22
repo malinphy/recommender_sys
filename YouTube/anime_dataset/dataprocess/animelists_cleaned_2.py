@@ -49,6 +49,10 @@ class data_prep:
 
     df['my_last_updated'] =date_part_1
     #### Above column will convert the string data into a date data
+    #### there are some entries before '2000-00-00' in 'my_last_updated'
+    earlier_index = np.where(df['my_last_updated'] < '2000-00-00')
+    df = df.drop(earlier_index[0]).reset_index(drop= True)
+
     df['my_last_updated'] = pd.to_datetime(df['my_last_updated'])
     
 
