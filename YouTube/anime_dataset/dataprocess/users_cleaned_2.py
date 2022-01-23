@@ -124,3 +124,6 @@ class data_prep:
     users_cleaned.drop(columns=['index'])
 
     return users_cleaned
+
+users_cleaned_dir = 'drive/MyDrive/Colab Notebooks/datasets/anime/users_cleaned.csv'
+data_prep(users_cleaned_dir).prep()
