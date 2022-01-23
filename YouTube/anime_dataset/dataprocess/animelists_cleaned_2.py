@@ -19,19 +19,6 @@ class data_prep:
     self.dir = dir
   
   def prep(self):
-    ## animelists_cleaned.csv dataset contains ['username', 'anime_id', 'my_watched_episodes', 'my_start_date',
-    ##                                          'my_finish_date', 'my_score', 'my_status', 'my_rewatching',
-    ##                                          'my_rewatching_ep', 'my_last_updated', 'my_tags']
-    
-    ## the number of unique values for 'my_start_date' and 'my_finish rate' is 3 orders of magnitude smaller than 
-    ## the length of of the complete dataset. Most of the dates are filled with '0000-00-00' values. 
-    ## therefore, those columns will not be added into analysis
-    
-    ## 'my_rewatching' feature is also dominated with NaN values
-    ## 'my_tags' is completely filled with NaN values
-    ## 'my_rewatching_ep'  is mostly filled with 0 values 
-    ## most probably 'my_Rewatching','my_tags','my_rewatching' features were filled by users, therefore, those columns
-    ## will not be used during the feature engineering and analysis
     animelist_cleaned_cols = ['username','anime_id','my_last_updated'] ##since data set is large, 
                                                                        ##I will not add some non-related columns
     df = pd.read_csv(self.dir,
@@ -49,10 +36,8 @@ class data_prep:
 
     df['my_last_updated'] =date_part_1
     #### Above column will convert the string data into a date data
-    #### there are some entries before '2000-00-00' in 'my_last_updated'
     earlier_index = np.where(df['my_last_updated'] < '2000-00-00')
     df = df.drop(earlier_index[0]).reset_index(drop= True)
-
     df['my_last_updated'] = pd.to_datetime(df['my_last_updated'])
     
 
@@ -76,16 +61,26 @@ class data_prep:
 
     df = df.drop(shorts).reset_index(drop=True)
     last_watches = []
-    perevious_watches = []
+    previous_watches = []
     for i in df['anime_id']:
       last_watches.append(i[-1])
-      perevious_watches.append(i[:-1])
-    df['perevious_watches'] = perevious_watches
+      previous_watches.append(i[:-1])
+    df['previous_watches'] = previous_watches
     df['last_watches'] = last_watches
     df = df.drop(columns = ['anime_id'])
-    return df
+
+    np_prev_w = []
+    for i in  df['previous_watches'] :
+      var1 = []
+      for j in i:
+        var1.append(int(j))
+      np_prev_w.append(np.array(var1))
+
+    df['previous_watches'] = np_prev_w
+    return df 
 df = data_prep(dir_url).prep()
 df.head(2)
+
 
 
 
