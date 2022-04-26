@@ -173,6 +173,8 @@ out = tf.concat([out_v, out_h], axis = 1, name ='convo_concat')
 dropout_layer = Dropout(0.05, name = 'dropout_layer')(out)
 z = Dense(10, name = 'dense_layer')(dropout_layer)
 x = tf.concat([z, Flatten()(user_embedding)], axis=1, name = 'x')
+res = tf.matmul(doublet_embedding,tf.expand_dims(x,axis=-1))
+res = tf.squeeze(res,axis =2)
 
 print('X',x.shape)
 print('doublet_embedding',doublet_embedding.shape)
@@ -194,8 +196,8 @@ caser_model =tf.keras.Model(inputs= [
                                       seq_input,
                                       doublet_input
                                       ],
-                            # outputs = res2,
-                            outputs = x
+                            outputs = res,
+#                             outputs = x
                             )
 
 caser_model.compile(loss = identity_loss,optimizer = 'Adam')
@@ -210,30 +212,5 @@ caser_hist = caser_model.fit(
                 batch_size = 1 ### BATCH SIZE DEGISINCE PROGRAM HATA VERIYOR, BUNU DUZELT
                 )
 
-topk = 3
-score = tf.matmul(x, tf.transpose(doublet_embedding, [0,2,1]))
-pred= tf.math.reduce_sum(score, axis=1) +doublet_embedding_b
-score_shape = tf.shape(score)
-sb = tf.tile(tf.expand_dims(tf.squeeze(doublet_embedding_b),[0]),[score_shape[0],1])
-score =  tf.sigmoid(score + sb)
-top_k = tf.nn.top_k(score, k=topk)
 
-print(pred.shape)
-print(doublet_embedding.shape)
-print(score_shape)
-
-tf.squeeze(x, axis= 0)
-
-deneme = tf.matmul(tf.squeeze(x, axis = 0), tf.squeeze(tf.transpose(doublet_embedding, [0,2,1])))
-tf.shape(deneme)
-
-d1 = tf.reshape(tf.squeeze(x, axis = 0),[1,20])
-print(tf.shape(d1))
-
-d2 = tf.squeeze(tf.transpose(doublet_embedding, [0,2,1]),axis = 0)
-print(tf.shape(d2))
-
-d3 = tf.matmul(d1, (d2))
-d3_shape = tf.shape(d3)
-tf.tile(tf.expand_dims(tf.squeeze(doublet_embedding_b),[0]),[score_shape[0],1])
 
