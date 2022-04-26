@@ -209,7 +209,7 @@ caser_hist = caser_model.fit(
                               tf.constant( np.squeeze( np.dstack( [ df[ 'targets'].astype('int'), df['negs'].astype('int') ] ) ) ) ],
                 y_dummy,
                 epochs = 1,  
-                batch_size = 1 ### BATCH SIZE DEGISINCE PROGRAM HATA VERIYOR, BUNU DUZELT
+                batch_size = 1 
                 )
 
 
