@@ -174,6 +174,7 @@ dropout_layer = Dropout(0.05, name = 'dropout_layer')(out)
 z = Dense(10, name = 'dense_layer')(dropout_layer)
 x = tf.concat([z, Flatten()(user_embedding)], axis=1, name = 'x')
 res = tf.matmul(doublet_embedding,tf.expand_dims(x,axis=-1))
+res = res+doublet_embedding_b
 res = tf.squeeze(res,axis =2)
 
 print('X',x.shape)
