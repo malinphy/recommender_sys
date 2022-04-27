@@ -172,7 +172,9 @@ out_h = tf.concat(out_hs, axis=1, name ='sequential_out') # galiba axis 2 olmali
 out = tf.concat([out_v, out_h], axis = 1, name ='convo_concat')
 dropout_layer = Dropout(0.05, name = 'dropout_layer')(out)
 z = Dense(10, name = 'dense_layer')(dropout_layer)
-x = tf.concat([z, Flatten()(user_embedding)], axis=1, name = 'x')
+flat_users = Flatten(name = 'flatten')(user_embedding)
+x = tf.concat([z, flat_users], axis=1, name = 'x')
+# x = tf.concat([z, Flatten()(user_embedding)], axis=1, name = 'x')
 res = tf.matmul(doublet_embedding,tf.expand_dims(x,axis=-1))
 res = res+doublet_embedding_b
 res = tf.squeeze(res,axis =2)
