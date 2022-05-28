@@ -21,11 +21,22 @@ import tensorflow as tf
 from tensorflow import keras 
 from tensorflow.keras import layers,Input, Model
 from tensorflow.keras.layers import Dense, Concatenate, Multiply, Embedding,Dot, Dropout
+import os 
+print(os.listdir())
+
+####
+LATENT_DIM = 8 ### basically embedding_dimension
+DROP_RATE = 0.9 # dropout rate for dropout layer 
+TRAIN_NEG_NUM = 6 # negative examples for train set
+TEST_NEG_NUM = 100 # negative examoles for test set
+NUM_EPOCHS = 1
+BATCH_SIZE = 256
 
 u_data_link = 'https://raw.githubusercontent.com/malinphy/datasets/main/ml100K/u.data'
 df = pd.read_csv(u_data_link,delimiter='\t',header=None)
 col_titles = ['user_id', 'item_id' , 'rating' , 'timestamp']
 df.columns = col_titles
+df = df.drop(columns = ['timestamp'])
 
 num_users = len(df['user_id'].unique())
 num_items = len(df['item_id'].unique())
@@ -33,69 +44,107 @@ num_items = len(df['item_id'].unique())
 print('number of different users :', num_users)
 print('number of different items :', num_items)
 
-#### so timestamp has been recorded as unix time stamp, I will convert it. 
-pd.to_datetime(df['timestamp'], unit='s')
+# #### so timestamp has been recorded as unix time stamp, I will convert it. 
+# pd.to_datetime(df['timestamp'], unit='s')
 
-def time_conv(x):
+# def time_conv(x):
 
-  y = pd.to_datetime(x, unit='s')
-  return y
+#   y = pd.to_datetime(x, unit='s')
+#   return y
 
-df['timestamp'] = time_conv(df['timestamp'])
+# df['timestamp'] = time_conv(df['timestamp'])
 
-### I will only need time but not need the time, therefore, I will strip the time 
-def data_splitter(x):
-  return str(x).split()[0]
+# ### I will only need time but not need the time, therefore, I will strip the time 
+# def data_splitter(x):
+#   return str(x).split()[0]
 
-df['timestamp'] = df['timestamp'].apply(data_splitter)
-df['timestamp'] =pd.to_datetime(df['timestamp'])
+# df['timestamp'] = df['timestamp'].apply(data_splitter)
+# df['timestamp'] =pd.to_datetime(df['timestamp'])
 
 ### So lets sort the users and items 
-df = df.sort_values(by = ['user_id']).reset_index(drop = True)
+# df = df.sort_values(by = ['user_id']).reset_index(drop = True)
 
-unique_items = df['item_id'].unique()
-unique_user = df['user_id'].unique()
+# unique_items = df['item_id'].unique()
+# unique_user = df['user_id'].unique()
 
-user_2enc = {i:j for i,j in enumerate(df['user_id'].unique())}
-enc_2user = {j:i for i,j in enumerate(df['user_id'].unique())}
+# user_2enc = {i:j for i,j in enumerate(df['user_id'].unique())}
+# enc_2user = {j:i for i,j in enumerate(df['user_id'].unique())}
 
-item_2enc = {i:j for i,j in enumerate(df['item_id'].unique())}
-enc_2item = {j:i for i,j in enumerate(df['item_id'].unique())}
-df['user_id_enc'] = df['user_id'].map(enc_2user)
-df['item_id_enc'] = df['item_id'].map(enc_2item)
+# item_2enc = {i:j for i,j in enumerate(df['item_id'].unique())}
+# enc_2item = {j:i for i,j in enumerate(df['item_id'].unique())}
+# df['user_id_enc'] = df['user_id'].map(enc_2user)
+# df['item_id_enc'] = df['item_id'].map(enc_2item)
 
+# encoded_user_list = df['user_id_enc'].unique()
+# encoded_item_list = df['item_id_enc'].unique()
 
-encoded_user_list = df['user_id_enc'].unique()
-encoded_item_list = df['item_id_enc'].unique()
+# unique_item_enc = df['item_id_enc'].unique()
+# unique_user_enc = df['user_id_enc'].unique()
 
-unique_item_enc = df['item_id_enc'].unique()
-unique_user_enc = df['user_id_enc'].unique()
+# df_enc = pd.DataFrame({'user_id_enc':  df['user_id'].map(enc_2user), 
+#                        'item_id_enc': df['item_id'].map(enc_2item),
+#                        'ratings':df['rating'].copy()})
 
-df_enc = pd.DataFrame({'user_id_enc':  df['user_id'].map(enc_2user), 
-                       'item_id_enc': df['item_id'].map(enc_2item),
-                       'ratings':df['rating'].copy()})
+def encoder(df, user_col, item_col):
+    df = df.sort_values(by = [user_col]).reset_index(drop = True)
+
+    unique_items = df[item_col].unique()
+    unique_user = df[user_col].unique()
+
+    user_2enc = {i:j for i,j in enumerate(df[user_col].unique())}
+    enc_2user = {j:i for i,j in enumerate(df[user_col].unique())}
+
+    item_2enc = {i:j for i,j in enumerate(df[user_col].unique())}
+    enc_2item = {j:i for i,j in enumerate(df[item_col].unique())}
+    df['user_id_enc'] = df[user_col].map(enc_2user)
+    df['item_id_enc'] = df[item_col].map(enc_2item)
+
+    encoded_user_list = df['user_id_enc'].unique()
+    encoded_item_list = df['item_id_enc'].unique()
+
+    unique_item_enc = df['item_id_enc'].unique()
+    unique_user_enc = df['user_id_enc'].unique()
+
+    df_enc = pd.DataFrame({ 'user_id_enc':  df[user_col].map(enc_2user), 
+                            'item_id_enc': df[item_col].map(enc_2item),
+                            'ratings':df['rating'].copy()})
+    
+    return df_enc, unique_user_enc, unique_item_enc 
+
+df_enc, unique_user_enc,unique_item_enc= encoder(df,'user_id','item_id')
 
 def sequencer(df,col):
-  var = df.groupby(col).aggregate(lambda tdf: tdf.unique().tolist()) 
-  var = var.reset_index()
+    var = df.groupby(col).aggregate(lambda tdf: tdf.unique().tolist()) 
+    var = var.reset_index()
 
-  return var
+    return var
 
 df_2 = df_enc[['user_id_enc','item_id_enc','ratings']]
 df_2['ratings'] = 1
 df_enc_seq =sequencer(df_2,'user_id_enc')
 df_enc_seq.head(3)
 
+# def train_test_maker(df): ### df will be in sequential format
+#   last_items = []
+#   for i in range(len(df)):
+#     last_items.append(np.array(df['item_id_enc'][i][-1]))
+
+#   mid_items = []
+#   for i in range(len(df)):
+#     mid_items.append(df['item_id_enc'][i][:-1])
+
+#   return (last_items, mid_items)
+
 def train_test_maker(df): ### df will be in sequential format
-  last_items = []
-  for i in range(len(df)):
-    last_items.append(np.array(df['item_id_enc'][i][-1]))
+    last_items = []
+    for i in range(len(df)):
+        last_items.append(np.array(df['item_id_enc'][i][-1]))
 
-  mid_items = []
-  for i in range(len(df)):
-    mid_items.append(df['item_id_enc'][i][:-1])
+    mid_items = []
+    for i in range(len(df)):
+        mid_items.append(df['item_id_enc'][i][:-1])
 
-  return(last_items, mid_items)
+    return (last_items, mid_items)
 
 last_items, mid_items = train_test_maker(df_enc_seq)
 
@@ -122,161 +171,82 @@ train_df = pd.DataFrame({'user_id_enc':np.concatenate(user_create),
                         'ratings' : np.ones(len(np.concatenate(user_create)),dtype='int32') 
                          })
 
-# def neg_maker(num_negs, df):
-#   num_neg = num_negs
-#   neg3 = []
-#   ui = []
-
-#   for i in range(len(df)):
-#     pos_items = df['item_id_enc'][i]
-#     neg2 = []
-
-#     for k in range(num_neg):
-#       pos_item = pos_items[k]
-#       neg1 = []
-
-#       for j in range(len(pos_items)):
-#         neg_item = np.random.randint(1, len(unique_item_enc))
-
-#         while neg_item in pos_items:
-#           neg_item = np.random.randint(1, len(unique_item_enc))
-
-#         neg1.append(neg_item)
-
-#       neg2.append(np.array(neg1))
-#       ui.append(i)
-#     neg3.append(np.array(neg2))
-
-#   total_negs = []
-#   for i in range(len(train_df_seq)):
-#     total_negs.append(np.concatenate(neg3[i][:num_negs]))
-
-#   return total_negs
-
-# train_neg = neg_maker(4, train_df_seq)
-
 train_df_seq
-
-# def neg_maker(num_negs, df):
-#   num_neg = num_negs
-#   neg3 = []
-#   ui = []
-
-#   for i in range(len(df)):
-#     pos_items = df['item_id_enc'][i]
-#     neg2 = []
-
-#     for k in range(num_neg):
-#       pos_item = pos_items[k]
-#       neg1 = []
-
-#       for j in range(len(pos_items)):
-#         neg_item = np.random.randint(1, len(unique_item_enc))
-
-#         while neg_item in pos_items:
-#           neg_item = np.random.randint(1, len(unique_item_enc))
-
-#         neg1.append(neg_item)
-
-#       neg2.append(np.array(neg1))
-#       ui.append(i)
-#     neg3.append(np.array(neg2))
-
-#   total_negs = []
-#   for i in range(len(train_df_seq)):
-#     total_negs.append(np.concatenate(neg3[i][:num_negs]))
-
-#   return total_negs
 
 ### train_df_seq
 
-num_neg = 4
-neg3 = []
-ui= 0
-us = []
-for i in train_df_seq['item_id_enc']:
-  pos_set = i
-  neg2 = []
+def train_neg_maker(num_neg, df):
+    num_neg = num_neg
+    neg3 = []
+    ui= 0
+    us = []
+    for i in train_df_seq['item_id_enc']:
+        pos_set = i
+        neg2 = []
   
-  for j in range(num_neg):
-    neg1 = []
-    for k in pos_set:
+        for j in range(num_neg):
+            neg1 = []
+            for k in pos_set:
       
-      neg_candidate = np.random.randint(1,len(unique_item_enc))
-
-      while neg_candidate in pos_set:
-
-        neg_candidate = np.random.randint(1,len(unique_item_enc))
-      us.append(ui)
+                neg_candidate = np.random.randint(1,len(unique_item_enc))
+                while neg_candidate in pos_set:
+                    neg_candidate = np.random.randint(1,len(unique_item_enc))
+                us.append(ui)
       
-      neg1.append((neg_candidate))
-    neg2.append(np.array(neg1))
-  ui += 1
-  neg3.append(neg2)
+                neg1.append((neg_candidate))
+            neg2.append(np.array(neg1))
+        ui += 1
+        neg3.append(neg2)
+    
+    return us, neg3
+
+us , neg3 = train_neg_maker(TRAIN_NEG_NUM,train_df_seq)
 
 train_neg = pd.DataFrame({'user_id_enc':us,
               'item_id_enc':np.concatenate(np.concatenate(np.array(neg3))),
               'ratings':np.zeros(len(us), dtype='int32')})
 train_neg.head(3)
 
-#### test function to check if there is any pos value in neg data
-# train_neg_seq = sequencer(train_neg,'user_id_enc')
-# x = train_neg_seq['item_id_enc'][0]
-# y = train_df_seq['item_id_enc'][0]
-# np.in1d(x,y)
-# bools = []
-# for i in range(len(train_neg_seq)):
-#   x = train_neg_seq['item_id_enc'][i]
-#   y = train_df_seq['item_id_enc'][i]
-#   bools.append(np.unique(np.in1d(x,y)))
-# np.unique(bools)
-
-# neg_maker(4,train_df_seq )
-test_df_seq
-
-
-
-num_neg = 100
-neg3 = []
-ui= 0
-us = []
-neg2 = []
-for i in test_df_seq['item_id_enc']:
-  pos_set = i
+def test_negative_maker(num_neg,df):
+    num_neg = num_neg
+    neg3 = []
+    ui= 0
+    us = []
+    neg2 = []
+    for i in df['item_id_enc']:
+        pos_set = i
   
-  neg1 = []
-  for j in range(num_neg):
+        neg1 = []
+        for j in range(num_neg):
     
-    # for k in pos_set:
+            neg_candidate = np.random.randint(1,len(unique_item_enc))
+
+            while neg_candidate == pos_set:
+
+                neg_candidate = np.random.randint(1,len(unique_item_enc))
+            us.append(ui)
       
-    neg_candidate = np.random.randint(1,len(unique_item_enc))
+            neg1.append((neg_candidate))
+        neg2.append(np.array(neg1))
 
-    while neg_candidate == pos_set:
+    return neg2
 
-      neg_candidate = np.random.randint(1,len(unique_item_enc))
-    us.append(ui)
-      
-    neg1.append((neg_candidate))
-  neg2.append(np.array(neg1))
-  # ui += 1
-  # neg3.append(neg2)
-
-test_negatives = pd.DataFrame(neg2)
+test_negatives = pd.DataFrame(test_negative_maker(TEST_NEG_NUM,test_df_seq))
 test_negatives
-test_negatives.columns = np.arange(1,101)
+test_negatives.columns = np.arange(1,TEST_NEG_NUM+1)
 
 train_total = shuffle(pd.concat([train_neg,train_df]))
 
-emb_dim = 8
+emb_dim = 16
 
 user_input = Input(shape = (1,), name = 'user_input')
 item_input = Input(shape = (1,), name = 'item_input')
 
-user_emb_mlp = Embedding(num_users+2, emb_dim, name = 'user_emb_mlp')(user_input)
-item_emb_mlp = Embedding(num_items+2, emb_dim, name = 'item_emb_mlp')(item_input)
+user_emb_mlp = Embedding(num_users+1, LATENT_DIM, name = 'user_emb_mlp')(user_input)
+item_emb_mlp = Embedding(num_items+1, LATENT_DIM, name = 'item_emb_mlp')(item_input)
 
-user_emb_gmf = Embedding(num_users+2, emb_dim, name = 'user_emb_gmf')(user_input)
-item_emb_gmf = Embedding(num_items+2, emb_dim, name = 'item_emb_gmf')(item_input)
+user_emb_gmf = Embedding(num_users+1, LATENT_DIM, name = 'user_emb_gmf')(user_input)
+item_emb_gmf = Embedding(num_items+1, LATENT_DIM, name = 'item_emb_gmf')(item_input)
 
 mult_layer = Multiply(name = 'element_wise_multiplication_gmf'
                     )([user_emb_gmf, item_emb_gmf])
@@ -284,12 +254,13 @@ mult_layer = Multiply(name = 'element_wise_multiplication_gmf'
 concat_layer = Concatenate()([user_emb_mlp,item_emb_gmf])
 
 dense_1 = Dense(64, activation = 'relu', name = 'dense_1_mlp')(concat_layer)
-dense_1 = Dropout(0.5)(dense_1)
+dense_1 = Dropout(DROP_RATE)(dense_1)
 dense_2 = Dense(32, activation = 'relu', name = 'dense_2_mlp')(dense_1)
-dense_2 = Dropout(0.5)(dense_2)
+dense_2 = Dropout(DROP_RATE)(dense_2)
 dense_3 = Dense(16, activation = 'relu', name = 'dense_3_mlp')(dense_2)
-dense_3 = Dropout(0.5)(dense_3)
+dense_3 = Dropout(DROP_RATE)(dense_3)
 dense_4 = Dense(8, activation = 'relu')(dense_3)
+dense_4 = Dropout(DROP_RATE)(dense_4)
 # dense_5 = Dense(4, activation = 'relu')(dense_4)
 
 neuMF_layer = Concatenate(axis=-1, name = 'NeuMF_layer')([mult_layer,dense_4])
@@ -308,8 +279,9 @@ mlp_model.compile(
 mlp_hist = mlp_model.fit([train_total['user_id_enc'], train_total['item_id_enc']],
               train_total['ratings'],
               validation_split = 0.2,
-              epochs = 50,
-              verbose = 0
+              epochs = NUM_EPOCHS,
+              verbose = 0,
+              batch_size = BATCH_SIZE
               )
 
 fig, (ax1, ax2) = plt.subplots(1, 2)
@@ -317,10 +289,7 @@ fig.suptitle('A tale of 2 subplots')
 
 ax1.plot(mlp_hist.history['loss'],label = 'train_loss')
 ax1.plot(mlp_hist.history['val_loss'], label = 'val_loss')
-# ax1.title('Loss vs Epochs')
-# ax1.xlabel('# Epocs')
-# ax1.ylabel('loss')
-# ax1.legend()
+
 
 ax2.plot(mlp_hist.history['accuracy'],label='train_acc')
 ax2.plot(mlp_hist.history['val_accuracy'],label='val_acc')
@@ -330,71 +299,6 @@ ax2.plot(mlp_hist.history['val_accuracy'],label='val_acc')
 # ax2.legend()
 
 plt.show()
-
-import numpy as np
-import heapq
-
-class Metric:
-
-    def __init__(self):
-        pass
-
-    def get_hits(self, k_ranked, holdout):
-        """
-        hit 생성 함수
-        hit := holdout(df_test의 item)이 K순위 내에 있는지 여부
-        """
-        for item in k_ranked:
-            if item == holdout:
-                return 1
-        return 0
-
-    def eval_rating(self, idx, test_ratings, test_negatives, K, model):
-        """
-        holdout(df_test의 item)이 K순위 내에 있는지 평가하는 함수
-        """
-        items = test_negatives[idx]      # negative items [neg_item_id, ... ] (1,100)
-        user_idx = test_ratings[idx][0]  # [user_id, item_id][0]
-        holdout = test_ratings[idx][1]   # [user_id, item_id][1]
-        items.append(holdout)            # holdout 추가 [neg_item_id, ..., holdout] (1,101)
-
-        # prediction
-        predict_user = np.full(len(items), user_idx, dtype='int32').reshape(-1, 1)  # [[user_id], ...], (101, 1)
-        np_items = np.array(items).reshape(-1, 1)                                   # [[item_id], ... ], (101, 1)
-
-        predictions = model.predict([predict_user, np_items])
-        predictions = predictions.flatten().tolist()
-        item_to_pre_score = {item:pre for item, pre in zip(items, predictions)}
-
-        # 점수가 높은 상위 k개 아이템 리스트
-        k_ranked = heapq.nlargest(K, item_to_pre_score, key=item_to_pre_score.get)
-
-        # holdout이 상위 K 순위에 포함 되는지 체크
-        # {1:포함, 0:포함x}
-        hits = self.get_hits(k_ranked, holdout)
-
-        return hits
-
-    def evaluate_top_k(self, df_neg, df_test, model, K=10):
-        """
-        TOP-K metric을 사용해 모델을 평가하는 함수
-        """
-        hits = []
-        test_u = df_test['user_id'].values.tolist()
-        test_i = df_test['item_id'].values.tolist()
-
-        test_ratings = list(zip(test_u, test_i))
-        df_neg = df_neg.drop(df_neg.columns[0], axis=1)
-        test_negatives = df_neg.values.tolist()  # [[(user_id, item_id=holdout)], neg_item,... ] (1,100)
-
-        # user 샘플링
-        sample_idx_lst = np.random.choice(len(test_ratings), int(len(test_ratings) * 0.3))
-        for user_idx in sample_idx_lst:  # 전체 사용: range(len(test_ratings))
-
-            hitrate = self.eval_rating(user_idx, test_ratings, test_negatives, K, model)
-            hits.append(hitrate)  # ex. [1,0,1,1,0,...] (1, df_test.shape[0])
-
-        return hits
 
 import heapq
 def get_hits(k_ranked, holdout):
@@ -453,20 +357,9 @@ def evaluate_top_k(df_neg, df_test, model, K=10):
 
 hits = evaluate_top_k(test_negatives,test_df,mlp_model, K=10)
 np.mean(hits)
+print('hit rate at 10:',np.mean(hits))
 
-bir = np.array([1,2,3])
-iki = np.array([4,5,6])
-
-for i,j in zip(bir,iki):
-    print(i,j)
-
-test_negatives
-
-x = np.array([1,23,np.array([12])])
-y = np.array([1,2,3])
-
-for i,j in zip(x,y):
-    print(i,j)
-
-{int(i):int(j) for i,j in zip(x,y)}
+print('tensorflow version', tf.__version__)
+print('pandas version', pd.__version__)
+print('numpy version', np.__version__)
 
