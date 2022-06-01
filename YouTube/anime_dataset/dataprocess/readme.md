@@ -21,7 +21,9 @@ A key advantage of using deep neural networds as generalization of matrix
 factorization is thta arbitrary contininous and categorical features can be easily
 added to the model.
 
-3.4 LABEL and CONTEXT SELECTION :
+3.5 EXPERIMENTS WITH FEATURES AND DEPTH :
+The softmax layer outputs a multinomial distribution over the same 1M video classes with a dimension 
+of 256. 
 
 
 
